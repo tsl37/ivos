@@ -85,7 +85,7 @@ gdt_descriptor:
     dd gdt_start
 
 BOOT_DRIVE db 0
-msg_loading db 'ChurchOS: booting', 13, 10, 0
+msg_loading db 'ChaoOS: booting', 13, 10, 0
 msg_error   db 'Disk Error!', 0
 
 times 510-($-$$) db 0
