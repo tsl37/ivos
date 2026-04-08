@@ -148,3 +148,22 @@ char *strtok(char *str, const char *delim)
 
     return start;
 }
+
+char* strcat(char *dest, const char *src) {
+    char *ptr = dest;
+
+    // 1. Move the pointer to the end of the destination string
+    while (*ptr != '\0') {
+        ptr++;
+    }
+
+    // 2. Copy the source string to the end of the destination
+    while (*src != '\0') {
+        *ptr++ = *src++;
+    }
+
+    // 3. Add the terminating null byte
+    *ptr = '\0';
+
+    return dest;
+}

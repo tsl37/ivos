@@ -6,7 +6,7 @@
 #include "string.h"
 #include "fat.h"
 
-// Původní pomocné funkce
+
 unsigned int atoi(char *str) {
     unsigned int res = 0;
     while (*str) {
@@ -79,9 +79,7 @@ void hex_dump(void *addr, int len) {
     vga_putchar('\n');
 }
 
-// --- Nové pomocné funkce pro FS ---
 
-// Sestaví absolutní cestu z aktuálního adresáře a uživatelského vstupu
 void make_abs_path(const char *cwd, const char *input, char *out) {
     if (input[0] == '/') {
         strcpy(out, input);
@@ -96,7 +94,7 @@ void make_abs_path(const char *cwd, const char *input, char *out) {
     }
 }
 
-// Výpis aktuálního adresáře
+
 void do_ls(const char *path) {
     Fat16Entry entry;
     uint32_t dir_off;
@@ -143,7 +141,7 @@ void do_ls(const char *path) {
     vga_print("\n");
 }
 
-// --- Hlavní smyčka CLI ---
+
 void cli_loop() {
     char line[128];
     char *argv[10];
@@ -174,7 +172,7 @@ void cli_loop() {
         else if (strcmp(argv[0], "clear") == 0) {
             for (int i = 0; i < 25; i++) vga_print("\n");
         } 
-        // --- Nové FS příkazy ---
+       
         else if (strcmp(argv[0], "tree") == 0) {
             printTree();
         } 
@@ -268,29 +266,40 @@ void cli_loop() {
         }
         else if (strcmp(argv[0], "write") == 0 && argc > 1) {
             make_abs_path(current_path, argv[1], abs_path);
-            fat_create_file(abs_path); // Ignorujeme EEXIST, pokud už existuje
+            fat_create_file(abs_path); 
             
-            vga_print("Enter text. Press '~' to save and exit.\n");
+            vga_print("Enter text. Press Ctrl+D to save and exit.\n");
             char wbuf[512];
             int wpos = 0;
             
             while (wpos < 512) {
                 char c = keyboard_getchar();
-                if (c == '~') break;
+            
+                if (c == 4) {
+                    break;
+                }
+            
                 if (c == '\b' && wpos > 0) {
                     wpos--;
                     int cursor = get_cursor() / 2;
-                    set_cursor(cursor - 1); vga_putchar(' '); set_cursor(cursor - 1);
-                } else if ((c >= 32 && c <= 126) || c == '\n') {
+                    set_cursor(cursor - 1); 
+                    vga_putchar(' '); 
+                    set_cursor(cursor - 1);
+                } 
+               
+                else if ((c >= 32 && c <= 126) || c == '\n') {
                     wbuf[wpos++] = c;
                     vga_putchar(c);
                 }
             }
+            
             vga_putchar('\n');
+           
             fat_write_data(abs_path, wbuf, wpos, 0);
+            
             vga_print("File saved.\n");
         }
-        // --- Původní debug příkazy ---
+       
         else if (strcmp(argv[0], "read") == 0 && argc > 1) {
             unsigned char disk_buffer[512];
             unsigned int lba = atoh(argv[1]);

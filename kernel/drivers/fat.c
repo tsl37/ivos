@@ -4,7 +4,7 @@
 #include "vga.h"
 #include <stdint.h>
 
-// Definice chybových kódů (jelikož nemáme <errno.h>)
+
 #define ENOENT  2
 #define ENOTDIR 20
 #define EINVAL  22
@@ -19,7 +19,7 @@ uint32_t data_start_sector;
 uint32_t partition_start_byte;
 uint32_t root_dir_sectors;
 
-// Obalové funkce pro IDE ovladač (vrací 0 při úspěchu)
+
 int read_sector(void *buf, uint32_t sector) {
     return ide_read_sector(sector, buf);
 }
@@ -28,8 +28,7 @@ int write_sector(void *buf, uint32_t sector) {
     return ide_write_sector(sector, buf);
 }
 
-// Čtení a zápis do FAT tabulky bylo nutné předělat z bytem orientovaného 
-// skákání (fseek) na čtení konkrétního 512B sektoru do bufferu.
+
 uint16_t get_fat_entry(uint16_t cluster) {
     uint32_t offset = fat_start_byte + (cluster * 2);
     uint32_t sector = offset / 512;
@@ -42,6 +41,7 @@ uint16_t get_fat_entry(uint16_t cluster) {
 }
 
 void set_fat_entry(uint16_t cluster, uint16_t value) {
+    
     uint32_t offset = fat_start_byte + (cluster * 2);
     uint32_t sector = offset / 512;
     uint32_t sec_offset = offset % 512;
@@ -50,16 +50,17 @@ void set_fat_entry(uint16_t cluster, uint16_t value) {
     read_sector(buf, sector);
     *((uint16_t*)(buf + sec_offset)) = value;
     write_sector(buf, sector);
-
-    // Zápis do záložní FAT tabulky, pokud existuje
+    serial_print("Fat entry set: ");
     if (bs.number_of_fats > 1) {
         uint32_t fat2_offset = offset + (bs.fat_size_sectors * bs.sector_size);
         uint32_t fat2_sector = fat2_offset / 512;
         uint32_t fat2_sec_offset = fat2_offset % 512;
         read_sector(buf, fat2_sector);
+     
         *((uint16_t*)(buf + fat2_sec_offset)) = value;
         write_sector(buf, fat2_sector);
     }
+      serial_print("second Fat entry set: ");
 }
 
 uint32_t get_cluster_offset(uint16_t n) {
@@ -80,13 +81,12 @@ void format_fat_name(const Fat16Entry *entry, char *out) {
 int fat_init(const char *image_path) {
     unsigned char buf[512];
     
-    // Čtení 0. sektoru disku (MBR)
+
     if (read_sector(buf, 0) != 0) return -1;
     
     memcpy(pt, buf + 0x1BE, sizeof(PartitionTable) * 4);
     partition_start_byte = pt[0].start_sector * 512;
     
-    // Čtení Boot Sektoru pro FAT16
     if (read_sector(buf, pt[0].start_sector) != 0) return -1;
     memcpy(&bs, buf, sizeof(Fat16BootSector));
     
@@ -98,10 +98,6 @@ int fat_init(const char *image_path) {
     return 0;
 }
 
-void fat_close() {
-    // Pro bare-metal nevyužito
-}
-
 int find_in_directory(uint32_t dir_start_off, const char *target, Fat16Entry *result, uint32_t *out_sector, int *out_idx, int is_root) {
     unsigned char buf[512];
     uint32_t limit = is_root ? root_dir_sectors : bs.sectors_per_cluster;
@@ -109,7 +105,7 @@ int find_in_directory(uint32_t dir_start_off, const char *target, Fat16Entry *re
 
     for (uint32_t s = 0; s < limit; s++) {
         uint32_t sec_num = start_sec + s;
-        // Změněna kontrola na != 0 (ide_read_sector vrací 0 při úspěchu)
+ 
         if (read_sector(buf, sec_num) != 0) break;
         
         Fat16Entry *es = (Fat16Entry *)buf;
@@ -171,7 +167,6 @@ int find_entry_by_path(const char *path, Fat16Entry *result, uint32_t *out_secto
     return -ENOENT;
 }
 
-// Kompletně přepsáno pro čtení po sektorech, abychom se vyhnuli malloc
 int fat_read_data(const Fat16Entry *entry, char *buf, size_t size, uint32_t offset) {
     if (offset >= entry->file_size) return 0;
     if (offset + size > entry->file_size) size = entry->file_size - offset;
@@ -214,6 +209,7 @@ int fat_read_data(const Fat16Entry *entry, char *buf, size_t size, uint32_t offs
 }
 
 int fat_delete_file(const char *path) {
+    //serial_print("\nDeleting file: ");
     Fat16Entry entry;
     uint32_t sec;
     int idx;
@@ -239,7 +235,6 @@ void printTreeRecursive(uint32_t dir_off, int depth) {
     unsigned char local_buffer[512];
     uint32_t start_sector = dir_off / bs.sector_size;
     
-    // Optimalizováno pro použití interního VGA driveru místo printf
     for (uint32_t s = 0; s < bs.sectors_per_cluster; s++) {
         if (read_sector(local_buffer, start_sector + s) != 0) break;
         
@@ -359,7 +354,6 @@ int fat_create_file(const char *path) {
     entry->starting_cluster = 0; 
     entry->file_size = 0;
     
-    // Ovladače času momentálně nemáme, nastavíme fixní dummy datum a čas
     entry->modify_date = 0;
     entry->modify_time = 0;
 
@@ -371,6 +365,7 @@ int fat_write_data(const char *path, const char *buf, size_t size, uint32_t offs
     Fat16Entry entry;
     uint32_t entry_sector;
     int entry_idx;
+    
     if (find_entry_by_path(path, &entry, &entry_sector, &entry_idx) != 0) return -ENOENT;
 
     uint32_t cluster_size = bs.sectors_per_cluster * bs.sector_size;
@@ -381,10 +376,13 @@ int fat_write_data(const char *path, const char *buf, size_t size, uint32_t offs
         set_fat_entry(new_c, 0xFFFF);
         entry.starting_cluster = new_c;
     }
-
+    serial_print("\nstarting writin: ");
+   
     uint16_t curr_c = entry.starting_cluster;
     uint32_t walk = offset;
+    
     while (walk >= cluster_size) {
+        
         uint16_t next = get_fat_entry(curr_c);
         if (next >= 0xFFF8) { 
             int new_c = find_free_cluster();
@@ -395,6 +393,7 @@ int fat_write_data(const char *path, const char *buf, size_t size, uint32_t offs
         }
         curr_c = next;
         walk -= cluster_size;
+          
     }
 
     unsigned char sector_buf[512];
@@ -405,7 +404,7 @@ int fat_write_data(const char *path, const char *buf, size_t size, uint32_t offs
     size_t to_write = (size < (512 - sec_off)) ? size : (512 - sec_off);
     memcpy(sector_buf + sec_off, buf, to_write);
     write_sector(sector_buf, target_sec);
-
+    serial_print("\nstructural print:\n ");
     if (offset + size > entry.file_size) {
         entry.file_size = offset + size;
     }
