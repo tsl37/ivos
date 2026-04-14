@@ -4,7 +4,7 @@
 KERNEL_OFFSET equ 0x1000 ; The same one we used when linking the kernel
 
 mov [BOOT_DRIVE], dl ; Remember that the BIOS sets us the boot drive in 'dl' on boot
-mov bp, 0x9000
+mov bp, 0x90000
 mov sp, bp
 
 call load_kernel ; read the kernel from disk
@@ -18,7 +18,7 @@ jmp $ ; Never executed
 [bits 16]
 load_kernel:
     mov bx, KERNEL_OFFSET ; Read from disk and store in 0x1000
-    mov dh, 50
+    mov dh, 52
     mov dl, [BOOT_DRIVE]
     call disk_load
     ret

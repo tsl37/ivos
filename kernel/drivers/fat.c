@@ -191,7 +191,8 @@ int fat_read_data(const Fat16Entry *entry, char *buf, size_t size, uint32_t offs
                 offset -= bs.sector_size;
                 continue;
             }
-            
+              int i  = 100000;
+            while(i--);
             read_sector(tmp, cluster_start_sec + s);
             size_t to_copy = bs.sector_size - offset;
             if (to_copy > (size - total)) to_copy = size - total;
@@ -209,23 +210,25 @@ int fat_read_data(const Fat16Entry *entry, char *buf, size_t size, uint32_t offs
 }
 
 int fat_delete_file(const char *path) {
-    //serial_print("\nDeleting file: ");
     Fat16Entry entry;
     uint32_t sec;
     int idx;
-    if (find_entry_by_path(path, &entry, &sec, &idx) != 0) return -ENOENT;
-    
+    if (find_entry_by_path(path, &entry, &sec, &idx) != 0) return -2;
     uint16_t cluster = entry.starting_cluster;
-    while (cluster != 0xFFFF && cluster >= 2 && cluster < 0xFFF0) {
+    while (cluster >= 2 && cluster < 0xFFF8) {
         uint16_t next = get_fat_entry(cluster);
-        set_fat_entry(cluster, 0x0000);
+        int i  = 100000;
+        while(i--);
+        set_fat_entry(cluster, 0x0000); 
         cluster = next;
     }
     
-    unsigned char buf[512];
-    read_sector(buf, sec);
-    ((Fat16Entry *)buf)[idx].filename[0] = 0xE5;
-    write_sector(buf, sec);
+    static unsigned char dir_buf[512]; 
+    if (read_sector(dir_buf, sec) != 0) return -1;
+    
+    ((Fat16Entry *)dir_buf)[idx].filename[0] = 0xE5;
+    
+    if (write_sector(dir_buf, sec) != 0) return -1;
     
     return 0;
 }

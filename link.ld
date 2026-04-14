@@ -26,9 +26,11 @@ SECTIONS
         *(.data)
     }
 
-    /* 5. Neinicializované globální proměnné a pole (automaticky vynulované) */
+   /* 5. Neinicializované globální proměnné a pole (automaticky vynulované) */
     .bss : {
+        _bss_start = .;        /* Define symbol for start of BSS */
         *(.COMMON)
         *(.bss)
+        _bss_end = .;          /* Define symbol for end of BSS */
     }
 }

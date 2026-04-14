@@ -2,7 +2,7 @@
 #define FAT_H
 
 #include <stdint.h>
-#include "string.h" // Pro datový typ size_t
+#include "string.h" 
 
 // MBR Partition Table (16 Bytů)
 typedef struct {
@@ -57,9 +57,7 @@ extern Fat16BootSector bs;
 extern uint32_t root_dir_sectors;
 extern uint32_t root_dir_start_byte;
 
-// Základní operace FS
-// Poznámka: Parametr image_path je ponechán kvůli zpětné kompatibilitě signatury, 
-// ale v bare-metal fat.c je ignorován, protože disk se čte přímo přes IDE.
+
 int fat_init(const char *image_path);
 void fat_close(void);
 
