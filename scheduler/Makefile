@@ -1,11 +1,23 @@
+CC = gcc
 CFLAGS = -g -Wall
 
-gthr_demo: gthr.o gthr_switch.o main.o
-	$(CC) -o $@ $^
+TARGET = gthr_demo
+OBJS = gthr.o gthr_switch.o gthr_plat_linux.o main.o
 
-.S.o:
-	as -o $@ $^
+all: $(TARGET)
 
-.PHONY: clean
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+gthr_switch.o: gthr_switch.S
+	as -o $@ $<
+
+.PHONY: run clean
+run: $(TARGET)
+	./$(TARGET)
+
 clean:
-	rm -f *.o gthr_demo
+	rm -f *.o $(TARGET)

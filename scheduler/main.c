@@ -41,10 +41,14 @@ void g(void) {
 }
 
 int main(void) {
-	gt_init();            // initialize threads, see gthr.c
-	gt_create(f);         // set f() as first thread
-	gt_create(f);         // set f() as second thread
-	gt_create(g);         // set g() as third thread
-	gt_create(g);         // set g() as fourth thread
-	gt_return(1);         // wait until all threads terminate
+    gt_init();            
+    gt_create(f);         
+    gt_create(f);         
+    gt_create(g);         
+    gt_create(g);         
+    
+
+    while(1) {
+        gt_yield(); 
+    }
 }
