@@ -5,8 +5,8 @@
 #include "ide.h"
 #include "string.h"
 #include "fat.h"
-
-
+#include "timer.h"
+extern volatile unsigned int tick;
 unsigned int atoi(char *str) {
     unsigned int res = 0;
     while (*str) {
@@ -199,6 +199,27 @@ void cli_loop() {
                 do_ls(current_path);
             }
         } 
+        else if (strcmp(argv[0], "time") == 0) {
+            vga_print("System time (ticks): ");
+            
+            unsigned int t = tick;
+            if (t == 0) {
+                vga_putchar('0');
+            } else {
+                // Rychlý převod integeru na string v desítkové soustavě
+                char tbuf[16];
+                int tpos = 0;
+                while (t > 0) {
+                    tbuf[tpos++] = (t % 10) + '0';
+                    t /= 10;
+                }
+                // Výpis pole pozpátku
+                while (tpos > 0) {
+                    vga_putchar(tbuf[--tpos]);
+                }
+            }
+            vga_print("\n");
+        }
         else if (strcmp(argv[0], "cd") == 0 && argc > 1) {
             make_abs_path(current_path, argv[1], abs_path);
             

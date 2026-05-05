@@ -4,7 +4,7 @@ OUTPUT_FORMAT("elf32-i386")
 SECTIONS
 {
     /* 1. Nastavení počáteční adresy, kam bootloader načítá kernel z disku */
-    . = 0x1000;
+    . = 0x8000;
 
     /* 2. Kódová sekce */
     .text : {

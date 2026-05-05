@@ -1,11 +1,18 @@
 [bits 16]
 [org 0x7c00]
 
-KERNEL_OFFSET equ 0x1000 ; The same one we used when linking the kernel
+xor ax, ax      ; ax = 0
+mov ds, ax      ; Vynulování Data Segmentu
+mov es, ax      ; Vynulování Extra Segmentu
+mov ss, ax      ; Vynulování Stack Segmentu
+
+KERNEL_OFFSET equ 0x8000 ; The same one we used when linking the kernel
 
 mov [BOOT_DRIVE], dl ; Remember that the BIOS sets us the boot drive in 'dl' on boot
 mov bp, 0x90000
 mov sp, bp
+
+
 
 call load_kernel ; read the kernel from disk
 call switch_to_32bit ; disable interrupts, load GDT,  etc. Finally jumps to 'BEGIN_PM'
@@ -18,7 +25,7 @@ jmp $ ; Never executed
 [bits 16]
 load_kernel:
     mov bx, KERNEL_OFFSET ; Read from disk and store in 0x1000
-    mov dh, 52
+    mov dh, 53
     mov dl, [BOOT_DRIVE]
     call disk_load
     ret

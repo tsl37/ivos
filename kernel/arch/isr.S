@@ -1,25 +1,27 @@
-.extern isr_handler
+; kernel/arch/isr.S
 
-/* Makro pro přerušení BEZ chybového kódu (přidáme dummy 0) */
-.macro ISR_NOERRCODE num
-.global isr\num
-isr\num:
+extern isr_handler
+
+; Makro pro přerušení BEZ chybového kódu (přidáme dummy 0)
+%macro ISR_NOERRCODE 1
+global isr%1
+isr%1:
     cli                 ; Zakážeme další přerušení
-    push $0             ; Dummy chybový kód
-    push $\num          ; Číslo přerušení
+    push dword 0        ; Dummy chybový kód (zarovnání stacku na 4 byty)
+    push dword %1       ; Číslo přerušení
     jmp isr_common_stub
-.endm
+%endmacro
 
-/* Makro pro přerušení S chybovým kódem (CPU už ho dalo na zásobník) */
-.macro ISR_ERRCODE num
-.global isr\num
-isr\num:
+; Makro pro přerušení S chybovým kódem (CPU už ho dalo na zásobník)
+%macro ISR_ERRCODE 1
+global isr%1
+isr%1:
     cli                 ; Zakážeme další přerušení
-    push $\num          ; Číslo přerušení
+    push dword %1       ; Číslo přerušení
     jmp isr_common_stub
-.endm
+%endmacro
 
-/* Definice prvních několika výjimek CPU (0 až 31) */
+; Definice prvních několika výjimek CPU (0 až 31)
 ISR_NOERRCODE 0  ; Div by zero
 ISR_NOERRCODE 1  ; Debug
 ISR_NOERRCODE 2  ; Non-maskable interrupt
@@ -36,18 +38,37 @@ ISR_ERRCODE   12 ; Stack fault (má error code)
 ISR_ERRCODE   13 ; General protection fault (má error code)
 ISR_ERRCODE   14 ; Page fault (má error code)
 ISR_NOERRCODE 15 ; Unknown interrupt
-/* ... (můžete doplnit až do 31) ... */
+; ... (můžete doplnit až do 31) ...
 
-/* Náš společný stub, kam skočí všechna ISR */
+; Náš společný stub, kam skočí všechna ISR
 isr_common_stub:
     pusha               ; Uloží edi, esi, ebp, esp, ebx, edx, ecx, eax
 
     ; Volání C funkce
-    push %esp           ; Předáme ukazatel na zásobník jako argument (registers_t *r)
+    push esp            ; Předáme ukazatel na zásobník jako argument (registers_t *r)
     call isr_handler
-    add $4, %esp        ; Úklid argumentu po návratu z C funkce
+    add esp, 4          ; Úklid argumentu po návratu z C funkce
 
     popa                ; Obnoví původní registry
-    add $8, %esp        ; Uklidí číslo přerušení a chybový kód ze zásobníku
+    add esp, 8          ; Uklidí číslo přerušení a chybový kód ze zásobníku
     sti                 ; Znovu povolí přerušení
     iret                ; Instrukce 'Interrupt Return' - návrat do přerušeného kódu
+
+
+; ============================================
+; TIMER IRQ0 STUB
+; ============================================
+global irq0_stub
+extern timer_callback
+
+irq0_stub:
+    pusha               ; Save all general-purpose registers
+    
+    call timer_callback ; Jump to your C code in timer.c
+    
+    popa                ; Restore all registers
+    iret                ; Return from interrupt (pops CS, EIP, EFLAGS)
+
+global isr_dummy
+isr_dummy:
+    iret        ; Prostě se rovnou vrať bez dělání čehokoliv
