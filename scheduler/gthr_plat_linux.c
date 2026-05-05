@@ -1,53 +1,77 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <signal.h>
 #include <sys/time.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
+#include <time.h>
 #include "gthr.h"
 
+/**
+ * Vypíše statistiky o běhu jednotlivých vláken včetně lístků (tickets).
+ * Volá se automaticky při stisknutí CTRL+C (SIGINT).
+ */
+void gt_plat_print_stats(int sig) {
+    printf("\n--- GThread Statistics ---\n");
+    // Přidán sloupec "Tickets" do záhlaví
+    printf("%-3s | %-8s | %-10s | %-10s | %-8s | %-5s | %-5s\n", 
+           "ID", "State", "Runtime(s)", "Wait(s)", "Switches", "Prio", "Tix");
+    printf("----------------------------------------------------------------------------\n");
+
+    for (int i = 0; i < MaxGThreads; i++) {
+        const char* state_str = "Unknown";
+        if (gt_table[i].state == Unused) state_str = "Unused";
+        else if (gt_table[i].state == Running) state_str = "Running";
+        else if (gt_table[i].state == Ready) state_str = "Ready";
+
+        // Vytištění dat včetně gt_table[i].tickets
+        printf("%-3d | %-8s | %-10.6f | %-10.6f | %-8d | %-5d | %-5d\n",
+               i, 
+               state_str,
+               gt_table[i].total_run_time,
+               gt_table[i].total_wait_time,
+               gt_table[i].switches,
+               gt_table[i].priority,
+               gt_table[i].tickets); // Nový sloupec pro lístky
+    }
+    exit(0);
+}
+
+// --- Zbytek souboru zůstává stejný ---
+
 double gt_plat_get_time(void) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (double)tv.tv_sec + (double)tv.tv_usec / 1e6;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+}
+
+static void timer_handler(int sig) {
+    gt_schedule();
 }
 
 void gt_plat_init_timer(void) {
-    signal(SIGALRM, (void (*)(int))gt_schedule);
-    signal(SIGINT, gt_plat_print_stats); 
-    ualarm(500, 500);
+    struct sigaction sa;
+    sa.sa_handler = &timer_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    sigaction(SIGALRM, &sa, NULL);
+    sa.sa_handler = &gt_plat_print_stats;
+    sigaction(SIGINT, &sa, NULL);
+    gt_plat_reset_timer();
 }
 
 void gt_plat_reset_timer(void) {
-    sigset_t set;
-    sigemptyset(&set);
-    sigaddset(&set, SIGALRM);
-    sigprocmask(SIG_UNBLOCK, &set, NULL);
-    ualarm(500, 500);
+    struct itimerval it;
+    it.it_interval.tv_sec = 0;
+    it.it_interval.tv_usec = 100000;
+    it.it_value.tv_sec = 0;
+    it.it_value.tv_usec = 100000;
+    setitimer(ITIMER_REAL, &it, NULL);
 }
 
-int gt_uninterruptible_nanosleep(time_t sec, long nanosec) {
-    struct timespec req;
+void gt_uninterruptible_nanosleep(long sec, long nanosec) {
+    struct timespec req, rem;
     req.tv_sec = sec;
     req.tv_nsec = nanosec;
-    do {
-        if (0 != nanosleep(&req, &req)) {
-            if (errno != EINTR) return -1;
-        } else break;
-    } while (req.tv_sec > 0 || req.tv_nsec > 0);
-    return 0;
-}
-
-void gt_plat_print_stats(int sig) {
-    printf("\n--- THREAD STATISTICS ---\n");
-    printf("ID\tState\tRunTime\tWaitTime\tAvgRun\tMaxRun\tVariance\n");
-    for (int i = 0; i < MaxGThreads; i++) {
-        struct gt *t = &gt_table[i];
-        if (t->state == Unused && t->switches == 0) continue;
-        double avg = (t->switches > 0) ? (t->total_run_time / t->switches) : 0;
-        double var = (t->switches > 0) ? (t->sum_sq_run / t->switches) - (avg * avg) : 0;
-        printf("%d\t%d\t%.4fs\t%.4fs\t%.4f\t%.4f\t%.6f\n", 
-               i, t->state, t->total_run_time, t->total_wait_time, avg, t->max_run, var);
+    while (nanosleep(&req, &rem) == -1) {
+        req = rem;
     }
-    exit(0);
 }

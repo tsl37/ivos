@@ -83,7 +83,23 @@ void hex_dump(void *addr, int len) {
 void make_abs_path(const char *cwd, const char *input, char *out) {
     if (input[0] == '/') {
         strcpy(out, input);
-    } else {
+    }
+    if(strcmp(input, ".") == 0) {
+        strcpy(out, cwd);
+    } else if (strcmp(input, "..") == 0) {
+        strcpy(out, cwd);
+        int len = strlen(out);
+        if (len > 1 && out[len - 1] == '/') out[len - 1] = '\0';
+        char *last_slash = strrchr(out, '/');
+        if (last_slash) {
+            if (last_slash == out) {
+                out[1] = '\0';
+            } else {
+                *last_slash = '\0';
+            }
+        }
+    }
+      else {
         strcpy(out, cwd);
         int len = strlen(out);
         if (len > 0 && out[len - 1] != '/') {
@@ -93,7 +109,6 @@ void make_abs_path(const char *cwd, const char *input, char *out) {
         strcpy(out + strlen(out), input);
     }
 }
-
 
 void do_ls(const char *path) {
     Fat16Entry entry;
@@ -235,10 +250,10 @@ void cli_loop() {
             make_abs_path(current_path, argv[1], abs_path);
             Fat16Entry entry;
             if (find_entry_by_path(abs_path, &entry, NULL, NULL) == 0) {
-                vga_print("Loading binary to 0x2000...\n");
-                void *load_addr = (void *)0x2000;
+                vga_print("Loading binary to 0x20000...\n");
+                void *load_addr = (void *)0x20000;
                 fat_read_data(&entry, load_addr, entry.file_size, 0);
-                vga_print("Jumping to 0x2000...\n");
+                vga_print("Jumping to 0x20000...\n");
                 
                 void (*func)() = (void (*)())load_addr;
                 func(); 

@@ -4,7 +4,7 @@ ASM = nasm
 OBJCOPY = objcopy
 
 # Parametry kompilátoru
-CFLAGS = -m32 -ffreestanding -nostdlib -fno-builtin -fno-stack-protector -fno-pie -Ikernel/drivers -Ikernel/arch -Ikernel/cli -Wall -Wextra
+CFLAGS = -m32 -ffreestanding -nostdlib -fno-builtin -fno-stack-protector -fno-pie -Ikernel/drivers -Ikernel/scheduler -Ikernel/arch -Ikernel/cli -Wall -Wextra
 
 # Seznam všech zdrojových souborů C
 C_SOURCES = kernel/kernel/main.c \
@@ -15,7 +15,8 @@ C_SOURCES = kernel/kernel/main.c \
             kernel/drivers/keyboard.c \
             kernel/drivers/ide.c \
             kernel/arch/io.c \
-            kernel/drivers/fat.c
+            kernel/drivers/fat.c \
+			kernel/scheduler/scheduler.c
 
 # Z C souborů vygenerujeme názvy cílových objektů (.o)
 OBJ_FILES = $(C_SOURCES:.c=.o)

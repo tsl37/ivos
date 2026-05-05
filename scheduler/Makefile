@@ -17,7 +17,7 @@ gthr_switch.o: gthr_switch.S
 
 .PHONY: run clean
 run: $(TARGET)
-	./$(TARGET)
+	./$(TARGET) LS
 
 clean:
 	rm -f *.o $(TARGET)
