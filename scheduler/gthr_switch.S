@@ -1,34 +1,24 @@
-#
-#   Context switch for x86_64
-#
-#   %rdi contains the current context structure.
-#   %rsi contains the context to switch to.
-#
-#   rbp is the base pointer, which points to the base of the current stack frame
-#   rsp is the stack pointer, which points to the top of the current stack frame
-#   The called routine is expected to preserve rsp, rbp, rbx, r12, r13, r14, and r15 but may trample any other registers.
-#
-#   see https://software.intel.com/en-us/articles/introduction-to-x64-assembly
+; kernel/scheduler/gthr_switch.S
+[bits 32]
+global gt_switch
 
-
-.globl _gt_switch, gt_switch
-_gt_switch:
 gt_switch:
+    ; Parameters: [esp + 4] = old_context, [esp + 8] = new_context
+    mov eax, [esp + 4]      ; Get pointer to old gt_context
+    mov edx, [esp + 8]      ; Get pointer to new gt_context
 
-        mov     %rsp, 0x00(%rdi)
-        mov     %r15, 0x08(%rdi)
-        mov     %r14, 0x10(%rdi)
-        mov     %r13, 0x18(%rdi)
-        mov     %r12, 0x20(%rdi)
-        mov     %rbx, 0x28(%rdi)
-        mov     %rbp, 0x30(%rdi)
+    ; Save current state
+    mov [eax + 0], esp      ; Save ESP
+    mov [eax + 4], edi      ; Save EDI
+    mov [eax + 8], esi      ; Save ESI
+    mov [eax + 12], ebp     ; Save EBP
+    mov [eax + 16], ebx     ; Save EBX
 
-        mov     0x00(%rsi), %rsp
-        mov     0x08(%rsi), %r15
-        mov     0x10(%rsi), %r14
-        mov     0x18(%rsi), %r13
-        mov     0x20(%rsi), %r12
-        mov     0x28(%rsi), %rbx
-        mov     0x30(%rsi), %rbp
+    ; Load new state
+    mov esp, [edx + 0]      ; Restore ESP
+    mov edi, [edx + 4]      ; Restore EDI
+    mov esi, [edx + 8]      ; Restore ESI
+    mov ebp, [edx + 12]     ; Restore EBP
+    mov ebx, [edx + 16]     ; Restore EBX
 
-        ret
+    ret

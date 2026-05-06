@@ -62,12 +62,18 @@ global irq0_stub
 extern timer_callback
 
 irq0_stub:
-    pusha               ; Save all general-purpose registers
+    pusha               ; Save all GP registers
     
-    call timer_callback ; Jump to your C code in timer.c
+    ; Optional: Save current ESP into the current thread's TCB here
+    ; so the scheduler knows where to resume this thread later.
     
-    popa                ; Restore all registers
-    iret                ; Return from interrupt (pops CS, EIP, EFLAGS)
+    call timer_callback ; This calls scheduler_tick -> gthr_yield
+    
+    ; When the scheduler eventually picks this thread again, 
+    ; execution resumes here.
+    
+    popa                ; Restore GP registers
+    iret                ; Resume the thread[cite: 1]
 
 global isr_dummy
 isr_dummy:
