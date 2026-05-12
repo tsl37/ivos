@@ -7,11 +7,13 @@ void timer_callback() {
     tick++;
     
     // Zde napojíme plánovač! 
+    serial_print("Timer tick: ");
+    serial_print_hex(tick);
+    outb(0x20, 0x20); 
     scheduler_tick();
     
-    // End Of Interrupt (EOI) pro PIC
-    // Pokud bychom to neudělali, PIC už nám nepošle další přerušení.
-    outb(0x20, 0x20); 
+ 
+ 
 }
 
 void timer_init(uint32_t frequency) {

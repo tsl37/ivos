@@ -41,14 +41,16 @@ void gt_init(void) {
 
 int gt_create(void (*f)(void), int priority) {
     struct gt *p = 0;
-    for (int i = 0; i < MaxGThreads; i++) {
+    for (int i = 1; i < MaxGThreads; i++) {
         if (gt_table[i].state == Unused) {
             p = &gt_table[i];
             break;
         }
     }
     if (!p) return -1;
-
+    serial_print("Creating thread with priority: ");
+    serial_print_hex(priority);
+    serial_print("\n");
     p->total_run_time = 0;
     p->total_wait_time = 0;
     p->switches = 0;
@@ -152,7 +154,13 @@ void gt_schedule(void) {
     new_ctx = &p->ctx;
     gt_current = p;
 
+    serial_print("Switching to thread with priority: ");
+    serial_print_hex(p->priority);
+    serial_print("\n");
+    serial_print("process number:");
+    serial_print_hex(p - gt_table); // Print thread index for debugging
     gt_switch(old_ctx, new_ctx);
+  
 }
 
 void gt_yield(void) {

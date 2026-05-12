@@ -20,32 +20,41 @@ void test_task_2();
 //extremely iportant for the start kerrnel function to be the first function in the file, otherwise the linker will not set it as the entry point and the kernel will not boot
 void start_kernel()
 {
-   unsigned char *bss = &_bss_start;
+    unsigned char *bss = &_bss_start;
     while (bss < &_bss_end) {
         *bss++ = 0;
     }
     const char *logo = " \xB0\xDB\xDB\xDB\xDB\xDB\xDB  \xB0\xDB\xDB                   \xB0\xDB\xDB\xDB\xDB\xDB\xDB    \xB0\xDB\xDB\xDB\xDB\xDB\xDB   \n\xB0\xDB\xDB   \xB0\xDB\xDB \xB0\xDB\xDB                   \xB0\xDB\xDB   \xB0\xDB\xDB  \xB0\xDB\xDB   \xB0\xDB\xDB  \n\xB0\xDB\xDB       \xB0\xDB\xDB\xDB\xDB\xDB\xDB\xDB\xDB   \xB0\xDB\xDB\xDB\xDB\xDB\xDB   \xB0\xDB\xDB     \xB0\xDB\xDB \xB0\xDB\xDB       \n\xB0\xDB\xDB       \xB0\xDB\xDB    \xB0\xDB\xDB       \xB0\xDB\xDB  \xB0\xDB\xDB     \xB0\xDB\xDB  \xB0\xDB\xDB\xDB\xDB\xDB\xDB\xDB\xDB  \n\xB0\xDB\xDB       \xB0\xDB\xDB    \xB0\xDB\xDB \xB0\xDB\xDB\xDB\xDB\xDB\xDB\xDB  \xB0\xDB\xDB     \xB0\xDB\xDB         \xB0\xDB\xDB \n \xB0\xDB\xDB   \xB0\xDB\xDB \xB0\xDB\xDB    \xB0\xDB\xDB \xB0\xDB\xDB   \xB0\xDB\xDB   \xB0\xDB\xDB   \xB0\xDB\xDB   \xB0\xDB\xDB   \xB0\xDB\xDB  \n  \xB0\xDB\xDB\xDB\xDB\xDB\xDB  \xB0\xDB\xDB    \xB0\xDB\xDB  \xB0\xDB\xDB\xDB\xDB\xDB\xB0\xDB\xDB   \xB0\xDB\xDB\xDB\xDB\xDB\xDB     \xB0\xDB\xDB\xDB\xDB\xDB\xDB   \n\n";
     vga_print(logo);
     serial_init();
-  
-    
-     serial_print("ChaOS booting...\n"); 
+    serial_print("ChaOS booting...\n"); 
 
+    // 1. Nastavení IDT a PIC (Přerušení ještě NEJSOU povolena)
     init_interrupts();
-   // 3. Inicializace časovače (např. 100 Hz = 10ms ticks)
+    serial_print("Interrupts initialized.\n");
+    gt_init();
+    // 2. Nastavení frekvence časovače
     timer_init(100);
-     __asm__ __volatile__("sti");
-    // 4. Povolení hardwarových přerušení (instrukce STI)
+    serial_print("Timer initialized.\n");
+
+    // 3. Inicializace scheduleru (MUSÍ BÝT PŘED STI)
+     
+    serial_print("Scheduler initialized.\n");
+
+    // 4. Vytvoření testovacích vláken
+    gt_create(test_task_1, 5); 
+    gt_create(test_task_2, 5); 
+    serial_print("Test threads created.\n");
 
     vga_print("Welcome to ChaOS!\n");
 
-    gt_init(); // Inicializace scheduleru a první vlákno (kernel thread)
-    gt_create(test_task_1, 5); // Vytvoření testovacího vlákna 1 s prioritou 5
-    gt_create(test_task_2, 5); // Vytvoření testovacího
-    gt_schedule(); // Spuštění plánovače, který přepne na první vlákno
+    // 5. TEPRVE TEĎ povolíme přerušení. Nyní, když timer "tikne", 
+    //    scheduler už bude vědět, co má dělat.
+    __asm__ __volatile__("sti");
+    serial_print("Interrupts enabled! Entering CLI loop...\n");
+
+    // 6. Hlavní smyčka
     cli_loop();
-   
-  
 }
 void init_interrupts() {
     // 1. Přemapování PIC musí být PRVNÍ. 
@@ -73,7 +82,7 @@ void init_interrupts() {
 void test_task_1() {
     while (1) {
         // Replace kprint/vga_print with your actual text printing function
-        vga_print("Task 1 is running...\n"); 
+        serial_print("Task 1 is running...\n"); 
         
         // Add a simple delay loop to slow down the output
         for (volatile int i = 0; i < 10000000; i++); 
@@ -85,7 +94,7 @@ void test_task_1() {
 
 void test_task_2() {
     while (1) {
-        vga_print("Task 2 is running...\n");
+        serial_print("Task 2 is running...\n");
         
         for (volatile int i = 0; i < 10000000; i++); 
 
