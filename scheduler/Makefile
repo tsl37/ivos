@@ -12,8 +12,9 @@ $(TARGET): $(OBJS)
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-gthr_switch.o: gthr_switch.S
-	as -o $@ $<
+
+kernel/scheduler/gthr_switch.o: kernel/scheduler/gthr_switch.S
+	nasm -f elf32 -o $@ $<
 
 .PHONY: run clean
 run: $(TARGET)

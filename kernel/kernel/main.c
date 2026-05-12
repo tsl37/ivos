@@ -7,6 +7,7 @@
 #include "idt.h"
 #include "pic.h"
 #include "timer.h"
+#include "scheduler.h"
 
 extern unsigned char _bss_start;
 extern unsigned char _bss_end;
@@ -30,6 +31,7 @@ void start_kernel()
      serial_print("ChaOS booting...\n"); 
 
     init_interrupts();
+    gt_init();
     // 3. Inicializace časovače (např. 100 Hz = 10ms ticks)
     timer_init(100);
      __asm__ __volatile__("sti");
@@ -43,6 +45,7 @@ void init_interrupts() {
     // 1. Přemapování PIC musí být PRVNÍ. 
     // Standardně jsou IRQ na 0-7, což koliduje s CPU výjimkami.
     // Musíme je posunout na 32-47.
+    
     pic_remap();
     idt_load();
     // 2. Naplnění tabulky IDT dummy handlerem (bezpečnostní síť).

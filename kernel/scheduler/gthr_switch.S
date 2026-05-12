@@ -1,34 +1,25 @@
-#
-#   Context switch for x86_64
-#
-#   %rdi contains the current context structure.
-#   %rsi contains the context to switch to.
-#
-#   rbp is the base pointer, which points to the base of the current stack frame
-#   rsp is the stack pointer, which points to the top of the current stack frame
-#   The called routine is expected to preserve rsp, rbp, rbx, r12, r13, r14, and r15 but may trample any other registers.
-#
-#   see https://software.intel.com/en-us/articles/introduction-to-x64-assembly
+[bits 32]
+section .text
+global gt_switch
 
-
-.globl _gt_switch, gt_switch
-_gt_switch:
 gt_switch:
+    ; [esp + 4] je první argument (old_ctx)
+    ; [esp + 8] je druhý argument (new_ctx)
+    mov eax, [esp + 4]
+    mov edx, [esp + 8]
 
-        mov     %rsp, 0x00(%rdi)
-        mov     %r15, 0x08(%rdi)
-        mov     %r14, 0x10(%rdi)
-        mov     %r13, 0x18(%rdi)
-        mov     %r12, 0x20(%rdi)
-        mov     %rbx, 0x28(%rdi)
-        mov     %rbp, 0x30(%rdi)
+    ; Uložení starého kontextu
+    mov [eax + 0], esp
+    mov [eax + 4], edi
+    mov [eax + 8], esi
+    mov [eax + 12], ebp
+    mov [eax + 16], ebx
 
-        mov     0x00(%rsi), %rsp
-        mov     0x08(%rsi), %r15
-        mov     0x10(%rsi), %r14
-        mov     0x18(%rsi), %r13
-        mov     0x20(%rsi), %r12
-        mov     0x28(%rsi), %rbx
-        mov     0x30(%rsi), %rbp
+    ; Načtení nového kontextu
+    mov esp, [edx + 0]
+    mov edi, [edx + 4]
+    mov esi, [edx + 8]
+    mov ebp, [edx + 12]
+    mov ebx, [edx + 16]
 
-        ret
+    ret
